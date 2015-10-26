@@ -18,17 +18,17 @@ class Ethernet(ctypes.Structure):
 
     payload = None
 
-    def __init__(self, packet, layers=0):
-        (dst, src, self.type) = struct.unpack('!6s6sH', packet[:14])
+    def __init__(self, packet, layers=0, sll=False, *args, **kwargs):
+        super(Ethernet, self).__init__(*args, **kwargs)
+        # TODO: add proper support for SLL https://wiki.wireshark.org/SLL
+        if not sll:
+            (dst, src, self.type) = struct.unpack('!6s6sH', packet[:14])
 
-        dst = bytearray(dst)
-        src = bytearray(src)
-        self.dst = b':'.join([('%02x' % o).encode('ascii') for o in dst])
-        self.src = b':'.join([('%02x' % o).encode('ascii') for o in src])
-
-        payload = binascii.hexlify(packet[14:])
-        self.payload = payload
-
+            dst = bytearray(dst)
+            src = bytearray(src)
+            self.dst = b':'.join([('%02x' % o).encode('ascii') for o in dst])
+            self.src = b':'.join([('%02x' % o).encode('ascii') for o in src])
+        self.payload = binascii.hexlify(packet[(16 if sll else 14):])
         if layers:
             self.load_network(layers)
 
@@ -76,15 +76,15 @@ def payload_type(ethertype):
     """
     if ethertype == 0x0800:
         from pcapfile.protocols.network.ip import IP
-        return (IP, 'IPv4')
+        return IP, 'IPv4'
 #    elif ethertype == 0x0806:
 #        from pcapfile.protocols.network.arp import ARP
-#        return (ARP, 'ARP')
+#        return ARP, 'ARP'
 #    elif ethertype == 0x0835:
 #        from pcapfile.protocols.network.rarp import RARP
-#        return (RARP, 'RARP')
+#        return RARP, 'RARP'
 #    elif ethertype == 0x08DD:
 #        from pcapfile.protocols.network.ipv6 import IPv6
-#        return (IPv6, 'IPv6')
+#        return IPv6, 'IPv6'
     else:
-        return (None, 'unknown')
+        return None, 'unknown'
